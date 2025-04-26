@@ -13,6 +13,9 @@ import com.rohlikgroup.casestudy.repository.ProductRepository;
 import com.rohlikgroup.casestudy.service.OrderService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +25,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -45,15 +49,16 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.PENDING);
 
         var orderItems = orderRequest.orderItems().stream().map(orderItemRequest -> {
-            var product = productRepository.findById(orderItemRequest.productId())
-                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + orderItemRequest.productId()));
-
-            if (product.getStockAmount() == null || product.getStockAmount() < orderItemRequest.quantity()) {
+            try {
+                //stock amount is updated atomically in the database we don't need to lock the product and slow down the process
+                //also there is a check in the database that prevents negative stock amounts
+                productRepository.updateStockAmount(orderItemRequest.productId(), orderItemRequest.quantity() * -1);
+            } catch (DataIntegrityViolationException e) {
                 throw new InsufficientStockException("Insufficient stock for product with id: " + orderItemRequest.productId());
             }
 
-            // FIXME this should be probably done for all products in one update
-            productRepository.updateStockAmount(product.getId(), orderItemRequest.quantity() * -1);
+            var product = productRepository.findById(orderItemRequest.productId())
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + orderItemRequest.productId()));
 
             OrderItem orderItem = new OrderItem();
             orderItem.setProduct(product);
@@ -77,11 +82,14 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalStateException("Cannot cancel order in status " + order.getStatus());
         }
 
+        //first we cancel the order - if it changes in the meantime the optimistic locking exception will be thrown, and we won't update the stock amounts
+        order.setStatus(OrderStatus.CANCELED);
+        orderRepository.save(order);
+
         for (OrderItem item : order.getOrderItems()) {
             productRepository.updateStockAmount(item.getProduct().getId(), item.getQuantity());
         }
 
-        order.setStatus(OrderStatus.CANCELED);
 
         return orderMapper.map(order);
     }
@@ -107,11 +115,17 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
     public void releaseUnpaidOrders() {
-        orderRepository.findAllByStatusAndCreatedAtBefore(OrderStatus.PENDING, LocalDateTime.now().minusMinutes(30)).forEach(order -> {
-            order.getOrderItems().forEach(item -> productRepository.updateStockAmount(item.getProduct().getId(), item.getQuantity()));
-            orderRepository.updateStatus(order.getId(), OrderStatus.CANCELED);
-        });
+        List<Order> orders = orderRepository.findAllByStatusAndCreatedAtBefore(OrderStatus.PENDING, LocalDateTime.now().minusMinutes(30));
+
+        for (Order order : orders) {
+            try {
+                cancelOrder(order.getId());
+            } catch (OptimisticLockingFailureException e) {
+                log.error("Failed to process order {}: {}", order.getId(), e.getMessage());
+            }
+        }
     }
 
 }

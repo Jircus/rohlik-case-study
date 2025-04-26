@@ -2,6 +2,8 @@ package com.rohlikgroup.casestudy.service;
 
 import com.rohlikgroup.casestudy.dto.OrderDto;
 import com.rohlikgroup.casestudy.dto.CreateOrderRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -17,7 +19,7 @@ public interface OrderService {
      * @param order the order to create
      * @return the created order
      */
-    OrderDto createOrder(CreateOrderRequest order);
+    OrderDto createOrder(@Valid @NotNull CreateOrderRequest order);
 
     /**
      * Cancels an order.
@@ -25,7 +27,7 @@ public interface OrderService {
      * @param orderId the ID of the order to cancel
      * @return the canceled order
      */
-    OrderDto cancelOrder(Long orderId);
+    OrderDto cancelOrder(@NotNull Long orderId);
 
     /**
      * Pays an order.
@@ -33,7 +35,7 @@ public interface OrderService {
      * @param orderId the ID of the order to pay
      * @return the paid order
      */
-    OrderDto setOrderPaid(Long orderId);
+    OrderDto setOrderPaid(@NotNull Long orderId);
 
     List<OrderDto> getOrders();
 
