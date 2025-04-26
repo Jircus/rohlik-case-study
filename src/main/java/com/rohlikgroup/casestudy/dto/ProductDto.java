@@ -14,7 +14,7 @@ public record ProductDto(Long id,
                          String name,
                          @NotNull
                          @Min(0)
-                         Integer quantityInStock,
+                         Integer stockAmount,
                          @NotNull
                          @Positive
                          BigDecimal price) {

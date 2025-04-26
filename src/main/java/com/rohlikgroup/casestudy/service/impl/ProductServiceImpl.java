@@ -50,7 +50,7 @@ public class ProductServiceImpl implements ProductService {
 
         existingProduct.setName(updatedProduct.name());
         existingProduct.setPrice(updatedProduct.price());
-        existingProduct.setStockAmount(updatedProduct.quantityInStock());
+        existingProduct.setStockAmount(updatedProduct.stockAmount());
 
         return productMapper.map(productRepository.save(existingProduct));
     }

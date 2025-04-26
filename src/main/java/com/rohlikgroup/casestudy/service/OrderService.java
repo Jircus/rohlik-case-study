@@ -3,8 +3,12 @@ package com.rohlikgroup.casestudy.service;
 import com.rohlikgroup.casestudy.dto.OrderDto;
 import com.rohlikgroup.casestudy.dto.CreateOrderRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
+
+import java.util.List;
 
 @Service
+@Validated
 public interface OrderService {
 
     /**
@@ -30,5 +34,9 @@ public interface OrderService {
      * @return the paid order
      */
     OrderDto setOrderPaid(Long orderId);
+
+    List<OrderDto> getOrders();
+
+    void releaseUnpaidOrders();
 
 }

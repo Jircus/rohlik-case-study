@@ -1,14 +1,14 @@
 package com.rohlikgroup.casestudy.controller;
 
+import com.rohlikgroup.casestudy.dto.CreateOrderRequest;
 import com.rohlikgroup.casestudy.dto.OrderDto;
 import com.rohlikgroup.casestudy.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
@@ -28,4 +28,17 @@ public class OrderController {
         var paidOrder = orderService.setOrderPaid(id);
         return ResponseEntity.ok(paidOrder);
     }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public OrderDto createOrder(@RequestBody CreateOrderRequest createOrderRequest) {
+        return orderService.createOrder(createOrderRequest);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<OrderDto>> listOrders() {
+        var orders = orderService.getOrders();
+        return ResponseEntity.ok(orders);
+    }
+
 }
